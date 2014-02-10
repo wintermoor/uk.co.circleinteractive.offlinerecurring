@@ -235,6 +235,7 @@ function civicrm_api3_job_process_offline_recurring_payments($params) {
             array(
                 'version'             => 3,
                 'activity_type_id'    => 6,
+                'source_record_id'    => $contribution_id,
                 'source_contact_id'   => $contact_id,
                 'assignee_contact_id' => $contact_id,
                 'subject'             => "Offline Recurring Contribution - " . $total_amount,
