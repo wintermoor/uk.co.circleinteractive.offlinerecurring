@@ -69,6 +69,10 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
             );
             
             if ($dao->fetch()) {
+                
+                if (_offlinerecurring_getCRMVersion() >= 4.4)
+                    $dao->next_sched_contribution = $dao->next_sched_contribution_date;
+
                 $defaults = array(
                     'amount'=>$dao->amount ,
                     'frequency_interval'      => $dao->frequency_interval,
@@ -201,7 +205,10 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
     		
         if ($params['action'] == 'add') {
 
-            $fields       = "id, contact_id, amount, frequency_interval, frequency_unit, invoice_id, trxn_id, currency, create_date, start_date, next_sched_contribution";
+            $fields = "id, contact_id, amount, frequency_interval, frequency_unit, invoice_id, trxn_id, currency, create_date, start_date, next_sched_contribution";
+            if (_offlinerecurring_getCRMVersion() >= 4.4)
+                $fields .= '_date';
+
             $values       = "NULL, %1, %2, %3, %4, %5, %6, %7, %8, %9, %10";
             $invoice_id   = md5(uniqid(rand(), true));
 
@@ -230,7 +237,9 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         } elseif ($params['action'] == 'update') {
             
             $sql = "UPDATE civicrm_contribution_recur SET amount = %1, frequency_interval = %2, frequency_unit = %3, start_date = %4, next_sched_contribution = %5, modified_date = %6"; 
-            
+            if (_offlinerecurring_getCRMVersion() >= 4.4)
+                $sql = str_replace('next_sched_contribution', 'next_sched_contribution_date', $sql);
+
             $recur_params = array(
                 1 =>  array($params['amount'],             'String'),
                 2 =>  array($params['frequency_interval'], 'String'),

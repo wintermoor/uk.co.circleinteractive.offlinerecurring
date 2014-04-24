@@ -158,13 +158,18 @@ function civicrm_api3_job_process_offline_recurring_payments($params) {
     $dtCurrentDayEnd   = $dtCurrentDay."235959"; 
     
     // Select the recurring payment, where current date is equal to next scheduled date
-    $dao = CRM_Core_DAO::executeQuery("
+    $sql = "
         SELECT * FROM civicrm_contribution_recur ccr
     INNER JOIN civicrm_contribution_recur_offline ccro ON ccro.recur_id = ccr.id
          WHERE (ccr.end_date IS NULL OR ccr.end_date > NOW())
            AND ccr.next_sched_contribution >= %1 
            AND ccr.next_sched_contribution <= %2
-    ", array(
+    ";
+    
+    if (_offlinerecurring_getCRMVersion() >= 4.4)
+        $sql = str_replace('next_sched_contribution', 'next_sched_contribution_date', $sql);
+
+    $dao = CRM_Core_DAO::executeQuery($sql, array(
           1 => array($dtCurrentDayStart, 'String'),
           2 => array($dtCurrentDayEnd, 'String')
        )
@@ -220,11 +225,16 @@ function civicrm_api3_job_process_offline_recurring_payments($params) {
         $next_collectionDate = strtotime ("+$dao->frequency_interval $dao->frequency_unit", $temp_date);
         $next_collectionDate = date('YmdHis', $next_collectionDate);
         
-        CRM_Core_DAO::executeQuery("
+        $sql = "
             UPDATE civicrm_contribution_recur 
                SET next_sched_contribution = %1 
              WHERE id = %2
-        ", array(
+        ";
+        
+        if (_offlinerecurring_getCRMVersion() >= 4.4)
+            $sql = str_replace('next_sched_contribution', 'next_sched_contribution_date', $sql);
+
+        CRM_Core_DAO::executeQuery($sql, array(
                1 => array($next_collectionDate, 'String'),
                2 => array($dao->id, 'Integer')
            )
