@@ -15,7 +15,7 @@
     <author>Andrew Walker - Circle Interactive, extension port of the civicrm_offline_recurring_payment module by Rajesh</author>
     <email>andyw(at)circle-interactive.co.uk</email>
   </maintainer>
-  <releaseDate>2013-07-19</releaseDate>
+  <releaseDate>2014-05-14</releaseDate>
   <version>1.5</version>
   <develStage>stable</develStage>
   <compatibility>
