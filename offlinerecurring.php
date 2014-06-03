@@ -224,7 +224,7 @@ function civicrm_api3_job_process_offline_recurring_payments($params) {
         //$mem_end_date = $member_dao->end_date;
 
         $next_sched_contribution = _offlinerecurring_getCRMVersion() >= 4.4 ? 
-            $dao->next_sched_contribution : $dao->next_sched_contribution_date;
+            $dao->next_sched_contribution_date : $dao->next_sched_contribution;
         
         $temp_date = strtotime($next_sched_contribution);
         
