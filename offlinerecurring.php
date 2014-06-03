@@ -147,7 +147,9 @@ function _offlinerecurring_getCRMVersion() {
     return floatval($crmversion[0] . '.' . $crmversion[1]);
 }
 
-// cron job converted from standalone cron script to job api call, andyw@circle
+# cron job converted from standalone cron script to job api call
+# todo: really need to rewrite this using the ContributionRecur api - that api didn't
+# exist when the extension was first written
 function civicrm_api3_job_process_offline_recurring_payments($params) {
     
     $config = &CRM_Core_Config::singleton();
@@ -220,7 +222,11 @@ function civicrm_api3_job_process_offline_recurring_payments($params) {
         }
     
         //$mem_end_date = $member_dao->end_date;
-        $temp_date = strtotime($dao->next_sched_contribution);
+
+        $next_sched_contribution = _offlinerecurring_getCRMVersion() >= 4.4 ? 
+            $dao->next_sched_contribution : $dao->next_sched_contribution_date;
+        
+        $temp_date = strtotime($next_sched_contribution);
         
         $next_collectionDate = strtotime ("+$dao->frequency_interval $dao->frequency_unit", $temp_date);
         $next_collectionDate = date('YmdHis', $next_collectionDate);
