@@ -66,10 +66,13 @@
         {/if}
 
         <!-- Display recurring contribution section -->
+        {if call_user_func(array('CRM_Core_Permission','check'), 'manage offline recurring payments')} 
         <br />
          <div class="view-content">
             <div id="help">
                 Click <a accesskey="N" href="{crmURL p="civicrm/recurring/add" q="action=add&cid=$contactId&reset=1"}">Set up Recurring Payment</a> to set up a recurring payment. Please note this will not create a contribution record for the contact. You need to set up a background process (cron job) which will create contributions depending on the recurring payment settings you specify.  
+                <br /><br />
+                <strong>{ts}NOTE:{/ts}</strong>{ts}You can switch the recurring record to another contact/membership by editing the record.{/ts}
             </div>
           </div>
           
@@ -113,7 +116,8 @@
                     <div class="icon inform-icon"></div>
                     {ts}No recurring payments have been setup for this contact.{/ts}
             </div>   
-          {/if}             
+          {/if}
+        {/if}
         <!-- Display recurring contribution section -->
         
 

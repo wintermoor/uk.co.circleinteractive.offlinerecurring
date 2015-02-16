@@ -26,7 +26,8 @@ function offlinerecurring_civicrm_links($op, $objectName, $objectId, &$links, &$
  */
 function offlinerecurring_civicrm_pageRun(&$page) {
     watchdog('andyw', 'page = <pre>' . print_r($page, true) . '</pre>');
-    if ($page instanceof CRM_Contribute_Page_Tab and implode('/', $page->urlPath) == 'civicrm/contact/view/contribution') {
+    if ($page instanceof CRM_Contribute_Page_Tab and implode('/', $page->urlPath) == 'civicrm/contact/view/contribution'
+        && CRM_Core_Permission::check('manage offline recurring payments')) {
         # template for this tab doesn't look for an .extra.tpl, 
         # so adding button via javascript
         $script = array(

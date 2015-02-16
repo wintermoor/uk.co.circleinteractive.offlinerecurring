@@ -60,6 +60,85 @@
 		</td>
      </tr>
 </table>
+
+{* Show the below sections only for edit/update action *}
+{if $action eq 2}
+{* Display existing contributions of the recur record *}
+{assign var="existingContributionsAvailable" value=0}
+{crmAPI var='result' entity='Contribution' action='get' contribution_recur_id=$recur_id}
+{if !empty($result.values)}
+{assign var="existingContributionsAvailable" value=1}
+<div class="crm-accordion-wrapper crm-contributionDetails-accordion collapsed">
+    <div class="crm-accordion-header active">
+      Existing Contributions
+    </div><!-- /.crm-accordion-header -->
+    <div class="crm-accordion-body" id="body-contributionDetails">
+      <div id="contributionDetails">
+        <div class="crm-section contribution-list">
+        <table>
+            <tr>
+                <th>{ts}Amount{/ts}</th>
+                <th>{ts}Type{/ts}</th>
+                <th>{ts}Source{/ts}</th>
+                <th>{ts}Received{/ts}</th>
+                <th>{ts}Status{/ts}</th>
+            </tr>    
+        {foreach from=$result.values item=ContributionDetails}
+            <tr>
+                <td>{$ContributionDetails.total_amount|crmMoney}</td>
+                <td>{$ContributionDetails.financial_type}</td>
+                <td>{$ContributionDetails.contribution_source}</td>
+                <td>{$ContributionDetails.receive_date|crmDate}</td>
+                <td>{$ContributionDetails.contribution_status}</td>
+            </tr>
+        {/foreach}
+        </table>
+        </div>   
+      </div>    
+    </div>     
+</div> 
+{/if}
+        
+{* Move recur record to new contact *}
+<div class="crm-accordion-wrapper crm-moveRecur-accordion collapsed">
+    <div class="crm-accordion-header active">
+      Move
+    </div><!-- /.crm-accordion-header -->
+    <div class="crm-accordion-body" id="body-moveRecur">
+    <div id="help">
+        You can move the recurring record to another contact/membership. 
+        {if $existingContributionsAvailable eq 1}
+            You can also choose to move the existing contributions to selected contact or retain with the existing contact.
+        {/if}    
+    </div>
+      <div id="moveRecur">
+        <div class="crm-section">
+            {$form.move_recurring_record.html}&nbsp;{$form.move_recurring_record.label}
+            <br /><br />
+            <table class="form-layout" id="move-recurring-table">
+              <tr>
+                <td class="label">{$form.contact_name.label}</td>
+                <td>{$form.contact_name.html}{$form.selected_cid.html}</td>
+              </tr>
+              {if $show_move_membership_field eq 1}
+              <tr>
+                <td class="label">{$form.membership_record.label}</td>
+                <td>{$form.membership_record.html}<br />
+                    <sub>( Membership Type / Membership Status / Start Date / End Date )</sub>
+                </td>
+              </tr>
+              {/if}
+              <tr>
+                <td class="label">{$form.move_existing_contributions.label}</td>
+                <td>{$form.move_existing_contributions.html}</td>
+              </tr>
+            </table>      
+        </div>   
+      </div>    
+    </div>     
+</div>
+{/if}
+
 <div class="crm-submit-buttons">{include file="CRM/common/formButtons.tpl" location="top"}
 &nbsp;&nbsp;&nbsp;<a class="button" href="{crmURL p='civicrm/contact/view' q="cid=$cid&reset=1"}"><span>{ts}Cancel{/ts}</span></a></div>
 </div>
@@ -83,7 +162,68 @@
 {literal}
 <script type="text/javascript">
 cj(function() {
-   cj().crmaccordions(); 
+   cj().crmAccordions(); 
+});
+
+var contactUrl = {/literal}"{crmURL p='civicrm/ajax/rest' q='className=CRM_Contact_Page_AJAX&fnName=getContactList&json=1&context=navigation' h=0 }"{literal};
+cj( '#contact_name' ).autocomplete( contactUrl, {
+    width: 200,
+    selectFirst: false,
+    minChars:1,
+    matchContains: true,
+    delay: 400
+}).result(function(event, data, formatted) {
+    var cid = data[1];
+    var name = data[0].split('::');
+    cj('input[name=selected_cid]').val(cid);
+    cj('#contact_name').val(name[0]);
+    CRM.api('Membership', 'get', {'contact_id': cid},
+    {success: function(data) {
+        cj('#membership_record').find('option').remove();    
+        cj('#membership_record').append(cj('<option>', { 
+            value: '0',
+            text : '- select -'
+        }));
+        cj.each(data.values, function(key, value) {
+            
+            // Get membership status label
+            var membershipStatusId = value.status_id;
+            var membershipStatuslabel = '';
+            CRM.api('MembershipStatus', 'getsingle', {'id': membershipStatusId},
+              {success: function(memstatus_data) {
+                    cj('#membership_record').append(cj('<option>', { 
+                        value: value.id,
+                        text : value.membership_name + ' / ' + memstatus_data.label + ' / ' + value.start_date + ' / ' + value.end_date
+                    }));
+               }
+            });
+        });
+        cj('#membership_record').parents('tr').show();
+      },
+    }
+  );
+});    
+
+cj(document).ready(function(){
+    
+    //cj('#membership_record').parents('tr').hide();
+    
+    cj('#move-recurring-table').hide();
+    
+    cj('#move_recurring_record').change(function(){
+        if (cj('#move_recurring_record').is(':checked')) {
+            cj('#move-recurring-table').show();
+        } else {
+            cj('#move-recurring-table').hide();
+        }
+    });
+    
+    // Hide 'Move Existing Contributions?' field is no existing contributions available
+    {/literal}{if $existingContributionsAvailable eq 0}{literal}
+        cj('#move_existing_contributions').prop('checked', false);
+        cj('#move_existing_contributions').parent().parent().hide();
+    {/literal}{/if}{literal}
+
 });
 </script>
 {/literal}

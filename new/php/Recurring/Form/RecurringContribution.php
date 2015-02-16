@@ -40,6 +40,11 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
      * @return void
      */
     function buildQuickForm( ) {
+      
+        // check permission
+        if (!CRM_Core_Permission::check('manage offline recurring payments')) {
+          CRM_Utils_System::permissionDenied();
+        }
         
         $attributes = CRM_Core_DAO::getAttribute('CRM_Contribute_DAO_ContributionRecur');
         $action     = @$_GET['action'];
@@ -106,6 +111,39 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
                }  
             }
             $this->addElement('hidden', 'recur_id', $id);
+            $this->assign('recur_id', $id);
+            
+            $this->addEntityRef('contact_id', ts('Contact'), array('create' => TRUE, 'api' => array('extra' => array('email'))), TRUE);
+            
+            $this->addElement('text', 'contact_name', 'Contact', array('size' => 50, 'maxlength' => 255));
+            $this->addElement('hidden', 'selected_cid', 'selected_cid');
+            $this->addElement('checkbox', 'move_recurring_record', ts('Move Recurring Record?'));
+            $this->addElement('checkbox', 'move_existing_contributions', ts('Move Existing Contributions?'));
+            // Set move existing contributions to TRUE as default
+            $defaults['move_existing_contributions'] = 1;
+            $defaults['contact_id'] = $cid;
+            $defaults['selected_cid'] = $cid;
+            
+            // Check if membership is linked with the recur record and allowed to be moved to different membership
+            // NOTE: 'membership_id' is not in 'civicrm_contribution_recur' table by default
+            if(CRM_Core_DAO::checkFieldExists('civicrm_contribution_recur', 'membership_id')) {
+              // Get memberships of the contact
+              // This will allow the recur record to be attached to a different membership of the same contact
+              $memberships = civicrm_api('membership', 'get',  array('version' => 3, 'contact_id' => $cid));
+              $existingMemberships = array('0' => '- select -');
+              if (!empty($memberships['values'])) {
+                foreach ($memberships['values'] as $membership_id => $membership_details) {
+                  $membershipStatusResult = civicrm_api('MembershipStatus', 'getsingle', array('version' => 3, 'id' => $membership_details['status_id']));
+                  $existingMemberships[$membership_id] = $membership_details['membership_name']
+                      .' / '.$membershipStatusResult['label']
+                      .' / '.$membership_details['start_date']
+                      .' / '.$membership_details['end_date'];
+                }
+              }
+              $this->add('select', 'membership_record', ts('Membership'), $existingMemberships, FALSE);
+              $this->assign('show_move_membership_field', 1);
+              $defaults['membership_record'] = $dao->membership_id;
+            }
         }
         
         $this->add('text', 'amount', ts('Amount'), array(), true);
@@ -194,7 +232,7 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         
         $config =& CRM_Core_Config::singleton();
         $params = $this->controller->exportValues();
-        $params['recur_id'] = $this->get('id');
+        $params['recur_id'] = $this->_submitValues['recur_id'];
 
         if(!empty($params['start_date']))
             $start_date = CRM_Utils_Date::processDate($params['start_date']);
@@ -258,6 +296,40 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
             $sql   .= ' WHERE id = %7';                         
             $status = ts('Recurring Contribution updated');        
 
+            // Moving recurring record to another contact, if 'Move Recurring Record?' is ticked
+            $move_recurring_record = $this->_submitValues['move_recurring_record'];
+            if ($move_recurring_record == 1) {
+              $move_existing_contributions = $this->_submitValues['move_existing_contributions'];
+              $selected_cid = $this->_submitValues['selected_cid'];
+              
+              if (!empty($selected_cid)) {
+                // Update contact id in civicrm_contribution_recur table
+                $update_recur_sql = "UPDATE civicrm_contribution_recur SET contact_id = %1 WHERE id = %2";
+                $update_recur_params = array(
+                  1 =>  array($selected_cid,      'Integer'),
+                  2 =>  array($params['recur_id'],  'Integer')
+                );
+                CRM_Core_DAO::executeQuery($update_recur_sql, $update_recur_params);
+                
+                // Update contact id in civicrm_contribution table, if 'Move Existing Contributions?' is ticked
+                if ($move_existing_contributions == 1) {
+                  $update_contribution_sql = "UPDATE civicrm_contribution SET contact_id = %1 WHERE contribution_recur_id = %2";
+                  CRM_Core_DAO::executeQuery($update_contribution_sql, $update_recur_params);
+                }
+                
+                // Move recurring record to another membership
+                $membership_record = $this->_submitValues['membership_record'];
+                if (CRM_Core_DAO::checkFieldExists('civicrm_contribution_recur', 'membership_id')) {
+                    // Update membership id in civicrm_contribution_recur table
+                    $update_membership_sql = "UPDATE civicrm_contribution_recur SET membership_id = %1 WHERE id = %2";
+                    $update_membership_params = array(
+                      1 =>  array($membership_record,   'Integer'),
+                      2 =>  array($params['recur_id'],  'Integer')
+                    );
+                    CRM_Core_DAO::executeQuery($update_membership_sql, $update_membership_params);
+                }
+              }
+            }
         }
         
         CRM_Core_DAO::executeQuery($sql, $recur_params);
@@ -265,10 +337,11 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         CRM_Core_DAO::executeQuery("REPLACE INTO civicrm_contribution_recur_offline (recur_id) VALUES (%1)", array(1 => array($recur_id, 'Integer')));
 
         $session = CRM_Core_Session::singleton();
-        CRM_Core_Session::setStatus($status);  
-        CRM_Utils_System::redirect(
-            CRM_Utils_System::url('civicrm/contact/view', 'reset=1&cid=' . $params['cid'], false, null, false, true)
-        );
+        //CRM_Core_Session::setStatus($status);
+        CRM_Core_Session::setStatus($status, ts('Complete'), 'success');
+        //CRM_Utils_System::redirect(
+        //    CRM_Utils_System::url('civicrm/contact/view', 'reset=1&cid=' . $params['cid'], false, null, false, true)
+        //);
 
       }
 }
