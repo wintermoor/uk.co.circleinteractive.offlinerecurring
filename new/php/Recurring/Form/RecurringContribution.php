@@ -340,13 +340,45 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
                 // Move recurring record to another membership
                 $membership_record = $this->_submitValues['membership_record'];
                 if (CRM_Core_DAO::checkFieldExists('civicrm_contribution_recur', 'membership_id')) {
-                    // Update membership id in civicrm_contribution_recur table
-                    $update_membership_sql = "UPDATE civicrm_contribution_recur SET membership_id = %1 WHERE id = %2";
-                    $update_membership_params = array(
-                      1 =>  array($membership_record,   'Integer'),
-                      2 =>  array($params['recur_id'],  'Integer')
+                  // Update membership id in civicrm_contribution_recur table
+                  $update_membership_sql = "UPDATE civicrm_contribution_recur SET membership_id = %1 WHERE id = %2";
+                  $update_membership_params = array(
+                    1 =>  array($membership_record,   'Integer'),
+                    2 =>  array($params['recur_id'],  'Integer')
+                  );
+                  CRM_Core_DAO::executeQuery($update_membership_sql, $update_membership_params);
+
+                  // Move membership payments if 'Move Existing Contributions?' is ticked
+                  if ($move_existing_contributions == 1 && $membership_record > 0 ) {
+                    
+                    // Create/Update membership payment
+                    // Check if the membership payment exists
+                    // if not create new one
+                    $contributions_sql = "SELECT cc.id , mp.contribution_id, mp.id as payment_id FROM civicrm_contribution cc LEFT JOIN civicrm_membership_payment mp ON mp.contribution_id = cc.id WHERE cc.contribution_recur_id = %1";
+                    $contributions_params = array(
+                      1 =>  array($params['recur_id'],  'Integer')
                     );
-                    CRM_Core_DAO::executeQuery($update_membership_sql, $update_membership_params);
+                    $contributions_dao = CRM_Core_DAO::executeQuery($contributions_sql, $contributions_params);
+                    while($contributions_dao->fetch()) {
+                      if (!empty($contributions_dao->contribution_id)) {
+                        //Update membership payment
+                        $update_membership_payment_sql = "UPDATE civicrm_membership_payment SET membership_id = %1 WHERE id = %2";
+                        $update_membership_payment_params = array(
+                          1 =>  array($membership_record,   'Integer'),
+                          2 =>  array($contributions_dao->payment_id,  'Integer')
+                        );
+                        CRM_Core_DAO::executeQuery($update_membership_payment_sql, $update_membership_payment_params);
+                      } else {
+                        //Insert membership payment
+                        $insert_membership_payment_sql = "INSERT INTO civicrm_membership_payment SET contribution_id = %2 , membership_id = %1";
+                        $insert_membership_payment_params = array(
+                          1 =>  array($membership_record,   'Integer'),
+                          2 =>  array($contributions_dao->id,  'Integer')
+                        );
+                        CRM_Core_DAO::executeQuery($insert_membership_payment_sql, $insert_membership_payment_params);
+                      }
+                    }
+                  }
                 }
               }
             }
