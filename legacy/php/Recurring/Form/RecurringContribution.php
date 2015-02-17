@@ -41,10 +41,6 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
      */
     function buildQuickForm( ) {
       
-      if (!CRM_Core_Permission::check('manage offline recurring payments')) {
-        CRM_Utils_System::permissionDenied();
-      }
-		
 		$attributes = CRM_Core_DAO::getAttribute('CRM_Contribute_DAO_ContributionRecur');
 	    $action     = @$_GET['action'];
         $cid        = CRM_Utils_Request::retrieve('cid', 'Integer', $this);
@@ -66,6 +62,11 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         CRM_Utils_System::setTitle('Setup Recurring Payment - ' . $contact_details['display_name']);
 
         if ($action == 'update') {
+          
+          // Check permission to edit recurring record
+          if (!CRM_Core_Permission::check('edit offline recurring payments')) {
+            CRM_Utils_System::permissionDenied();
+          }
 
     		$dao = CRM_Core_DAO::executeQuery(
                 "SELECT * FROM civicrm_contribution_recur WHERE id = %1",
@@ -85,10 +86,29 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
                     'processor_id'            => $dao->processor_id,
                     'next_sched_contribution' => $dao->next_sched_contribution,
                     'end_date'                => $dao->end_date,
-                    'recur_id'                => $dao->id
+                    'recur_id'                => $dao->id,
+                    'payment_processor_id'    => $dao->payment_processor_id,
+                    'payment_instrument_id'   => $dao->payment_instrument_id,  
+                    'enable_edit'             => 0,
                     //'standard_price'=>$dao->standard_price ,
                     //'vat_rate'=>$dao->vat_rate 
                );
+                
+                // Allow $defaults to be modified via hook, before edit form displayed
+                // This will allow 'edit' to enabled for certain 'payment instruments' or 'payment processor'
+                // 'edit' is disabled for all recurring contributions by default
+                require_once 'Recurring/Utils/Hook.php';
+                Recurring_Utils_Hook::alterRecurringContributionParams( $defaults );
+                
+                // Redirect if 'edit' is disabled in hook
+                if ($defaults['enable_edit'] == 0) {
+                  $session = CRM_Core_Session::singleton();
+                  $status = ts('You are not allowed to edit the recurring record.');
+                  CRM_Core_Session::setStatus($status);  
+                  CRM_Utils_System::redirect(
+                      CRM_Utils_System::url('civicrm/contact/view', "reset=1&cid=$cid&force=1&selectedChild=contribute")
+                  );
+                }
                              
                if (CRM_Utils_Array::value('start_date', $defaults) && !empty($dao->start_date) && $dao->start_date != '0000-00-00') {
                    list($defaults['start_date'], $defaults['start_date_time']) 
@@ -141,6 +161,11 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
               $this->assign('show_move_membership_field', 1);
               $defaults['membership_record'] = $dao->membership_id;
             }
+        } else if ($action == 'add') {
+          // Check permission to add recurring record
+          if (!CRM_Core_Permission::check('add offline recurring payments')) {
+            CRM_Utils_System::permissionDenied();
+          }
         }
         
         $this->add('text', 'amount', ts('Amount'), array(), true);
@@ -229,7 +254,8 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         
         $config =& CRM_Core_Config::singleton();
 		$params = $this->controller->exportValues();
-        $params['recur_id'] = $this->get('id');
+        //$params['recur_id'] = $this->get('id');
+        $params['recur_id'] = $this->_submitValues['recur_id'];
 
 		if(!empty($params['start_date']))
 		    $start_date = CRM_Utils_Date::processDate($params['start_date']);
@@ -317,13 +343,25 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
                 // Move recurring record to another membership
                 $membership_record = $this->_submitValues['membership_record'];
                 if (CRM_Core_DAO::checkFieldExists('civicrm_contribution_recur', 'membership_id')) {
+                  // Update membership id in civicrm_contribution_recur table
+                  $update_membership_sql = "UPDATE civicrm_contribution_recur SET membership_id = %1 WHERE id = %2";
+                  $update_membership_params = array(
+                    1 =>  array($membership_record,   'Integer'),
+                    2 =>  array($params['recur_id'],  'Integer')
+                  );
+                  CRM_Core_DAO::executeQuery($update_membership_sql, $update_membership_params);
+
+                  // Move membership payments if 'Move Existing Contributions?' is ticked
+                  if ($move_existing_contributions == 1 && $membership_record > 0 ) {
                     // Update membership id in civicrm_contribution_recur table
-                    $update_membership_sql = "UPDATE civicrm_contribution_recur SET membership_id = %1 WHERE id = %2";
-                    $update_membership_params = array(
+                    $update_membership_payment_sql = "UPDATE civicrm_membership_payment SET membership_id = %1 WHERE contribution_id IN "
+                        . "(SELECT id from civicrm_contribution WHERE contribution_recur_id = %2)";
+                    $update_membership_payment_params = array(
                       1 =>  array($membership_record,   'Integer'),
                       2 =>  array($params['recur_id'],  'Integer')
                     );
-                    CRM_Core_DAO::executeQuery($update_membership_sql, $update_membership_params);
+                    CRM_Core_DAO::executeQuery($update_membership_payment_sql, $update_membership_payment_params);
+                  }
                 }
               }
             }

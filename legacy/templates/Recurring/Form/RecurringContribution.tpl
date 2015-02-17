@@ -108,7 +108,7 @@
     <div id="help">
         You can move the recurring record to another contact/membership. 
         {if $existingContributionsAvailable eq 1}
-            You can also choose to move the existing contributions to selected contact or retain with the existing contact.
+            You can also choose to move the existing contributions to the selected contact/membership or retain with the existing contact/membership.
         {/if}    
     </div>
       <div id="moveRecur">

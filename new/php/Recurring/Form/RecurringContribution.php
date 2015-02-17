@@ -41,11 +41,6 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
      */
     function buildQuickForm( ) {
       
-        // check permission
-        if (!CRM_Core_Permission::check('manage offline recurring payments')) {
-          CRM_Utils_System::permissionDenied();
-        }
-        
         $attributes = CRM_Core_DAO::getAttribute('CRM_Contribute_DAO_ContributionRecur');
         $action     = @$_GET['action'];
         $cid        = CRM_Utils_Request::retrieve('cid',  'Integer', $this);
@@ -67,6 +62,11 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         CRM_Utils_System::setTitle('Setup Recurring Payment - ' . $contact_details['display_name']);
 
         if ($action == 'update') {
+          
+            // Check permission to edit recurring record
+            if (!CRM_Core_Permission::check('edit offline recurring payments')) {
+              self::displayStatusMessage("Permission Denied.", '<p><em>You dont have permission to access the form/page.</em></p>');
+            }
 
             $dao = CRM_Core_DAO::executeQuery(
                 "SELECT * FROM civicrm_contribution_recur WHERE id = %1",
@@ -86,10 +86,24 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
                     'processor_id'            => $dao->processor_id,
                     'next_sched_contribution' => $dao->next_sched_contribution,
                     'end_date'                => $dao->end_date,
-                    'recur_id'                => $dao->id
+                    'recur_id'                => $dao->id,
+                    'payment_processor_id'    => $dao->payment_processor_id,
+                    'payment_instrument_id'   => $dao->payment_instrument_id,  
+                    'enable_edit'             => 0,
                     //'standard_price'=>$dao->standard_price ,
                     //'vat_rate'=>$dao->vat_rate 
                );
+                
+                // Allow $defaults to be modified via hook, before edit form displayed
+                // This will allow/disallow 'edit' to enabled for certain 'payment instruments' or 'payment processor'
+                // 'edit' is disabled for all recurring contributions by default
+                require_once 'Recurring/Utils/Hook.php';
+                Recurring_Utils_Hook::alterRecurringContributionParams( $defaults );
+
+                // Redirect if 'edit' is disabled in hook
+                if ($defaults['enable_edit'] == 0) {
+                  self::displayStatusMessage("Permission Denied.", '<p><em>You are not allowed to edit the recurring record.</em></p>');
+                }
                              
                if (CRM_Utils_Array::value('start_date', $defaults) && !empty($dao->start_date) && $dao->start_date != '0000-00-00') {
                    list($defaults['start_date'], $defaults['start_date_time']) 
@@ -144,6 +158,11 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
               $this->assign('show_move_membership_field', 1);
               $defaults['membership_record'] = $dao->membership_id;
             }
+        } else if ($action == 'add') {
+          // Check permission to add recurring record
+          if (!CRM_Core_Permission::check('add offline recurring payments')) {
+            self::displayStatusMessage("Permission Denied.", '<p><em>You dont have permission to access the form/page.</em></p>');
+          }
         }
         
         $this->add('text', 'amount', ts('Amount'), array(), true);
@@ -232,6 +251,7 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         
         $config =& CRM_Core_Config::singleton();
         $params = $this->controller->exportValues();
+        //$params['recur_id'] = $this->get('id');
         $params['recur_id'] = $this->_submitValues['recur_id'];
 
         if(!empty($params['start_date']))
@@ -344,4 +364,13 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         //);
 
       }
+      
+  public function displayStatusMessage($messageTitle, $message) {
+    $out = array(
+      'status' => 'fatal',
+      'content' => '<div class="messages status no-popup"><div class="icon inform-icon"></div>' . ts( $message ) . '</div>',
+    );
+    CRM_Core_Session::setStatus($message, ts( $messageTitle ), 'error');
+    CRM_Core_Page_AJAX::returnJsonResponse($out);
+  }      
 }
