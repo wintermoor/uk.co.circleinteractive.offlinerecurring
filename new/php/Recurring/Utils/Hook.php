@@ -73,6 +73,6 @@ abstract class Recurring_Utils_Hook {
    * @access public
    */
   static function alterRecurringContributionParams( &$recurParams ) {
-    return self::singleton( )->invoke( 1, $recurParams, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, 'civicrm_alterRecurringContributionsQuery' );
+    return self::singleton( )->invoke( 1, $recurParams, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, self::$_nullObject, 'civicrm_alterRecurringContributionParams' );
   }
 }
