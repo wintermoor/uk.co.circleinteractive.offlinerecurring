@@ -91,6 +91,9 @@
              <th>{ts}Frequency{/ts}</th>
              <th>{ts}Start Date{/ts}</th>
              <th>{ts}Next Scheduled Date{/ts}</th>
+             {if $membershipIdExists eq TRUE}
+                <th>{ts}Membership Type{/ts}</th>
+             {/if}
              <th>&nbsp;</th>
           </tr>
           
@@ -103,6 +106,9 @@
               <td>every {$row.frequency_interval} {$row.frequency_unit} </td>
               <td>{$row.start_date|crmDate}</td>
               <td>{$row.next_sched_contribution|crmDate}</td>
+              {if $membershipIdExists eq TRUE}
+                <td>{$row.membership_name}</td>
+              {/if}
               <!--<td>{$row.standard_price}</td>
               <td>{$row.vat_rate}</td>-->
               <td>

@@ -389,7 +389,9 @@ class Recurring_Form_RecurringContribution extends CRM_Core_Form {
         
         CRM_Core_DAO::executeQuery($sql, $recur_params);
         $recur_id = ($params['action'] == 'add' ? CRM_Core_DAO::singleValueQuery('SELECT LAST_INSERT_ID()') : $params['recur_id']);
-        CRM_Core_DAO::executeQuery("REPLACE INTO civicrm_contribution_recur_offline (recur_id) VALUES (%1)", array(1 => array($recur_id, 'Integer')));
+        if ($params['action'] == 'add') {
+          CRM_Core_DAO::executeQuery("REPLACE INTO civicrm_contribution_recur_offline (recur_id) VALUES (%1)", array(1 => array($recur_id, 'Integer')));
+        }
 
         $session = CRM_Core_Session::singleton();
         CRM_Core_Session::setStatus($status);  
