@@ -26,7 +26,8 @@ function offlinerecurring_civicrm_links($op, $objectName, $objectId, &$links, &$
  */
 function offlinerecurring_civicrm_pageRun(&$page) {
     watchdog('andyw', 'page = <pre>' . print_r($page, true) . '</pre>');
-    if ($page instanceof CRM_Contribute_Page_Tab and implode('/', $page->urlPath) == 'civicrm/contact/view/contribution') {
+    if ($page instanceof CRM_Contribute_Page_Tab and implode('/', $page->urlPath) == 'civicrm/contact/view/contribution'
+        && CRM_Core_Permission::check('add offline recurring payments')) {
         # template for this tab doesn't look for an .extra.tpl, 
         # so adding button via javascript
         $script = array(
@@ -40,6 +41,10 @@ function offlinerecurring_civicrm_pageRun(&$page) {
             '</div>'
         );
         CRM_Core_Resources::singleton()->addScript("if (!CRM.$('.add-recurring').length) CRM.$('.view-content').append('" . implode("", $script) . "');");     
+        // Hide 'Edit' link if no permission to edit offline recurring payments
+        if (!CRM_Core_Permission::check('edit offline recurring payments')) {
+          CRM_Core_Resources::singleton()->addScript("if (CRM.$('a[title=\'Edit Recurring Payment\']').length) CRM.$('a[title=\'Edit Recurring Payment\']').hide();");
+        }
     }
 
 }

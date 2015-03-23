@@ -112,6 +112,15 @@ function offlinerecurring_civicrm_xmlMenu(&$files) {
     $files[] = dirname(__FILE__) . "/$subDir/php/Recurring/xml/Menu/RecurringPayment.xml";
 }
 
+/**
+ * Implementation of hook_civicrm_permission
+ */
+function offlinerecurring_civicrm_permission( &$permissions ) {
+  $prefix = ts('CiviCRM') . ': '; // name of extension or module
+  $permissions['add offline recurring payments'] = $prefix . ts('add offline recurring payments');
+  $permissions['edit offline recurring payments'] = $prefix . ts('edit offline recurring payments');
+}
+
 # conditionally include other hooks / functions, depending
 # on which version of CiviCRM we're running on
 require_once dirname(__FILE__) . (

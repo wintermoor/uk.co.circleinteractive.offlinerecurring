@@ -67,15 +67,19 @@
 
         <!-- Display recurring contribution section -->
         <br />
+         {if call_user_func(array('CRM_Core_Permission','check'), 'add offline recurring payments')} 
          <div class="view-content">
             <div id="help">
                 Click <a accesskey="N" href="{crmURL p="civicrm/recurring/add" q="action=add&cid=$contactId&reset=1"}">Set up Recurring Payment</a> to set up a recurring payment. Please note this will not create a contribution record for the contact. You need to set up a background process (cron job) which will create contributions depending on the recurring payment settings you specify.  
+                <br /><br />
+                <strong>{ts}NOTE:{/ts}</strong>{ts}You can switch the recurring record to another contact/membership by editing the record.{/ts}
             </div>
           </div>
           
           <div class="action-link">
             <a accesskey="N" href="{crmURL p="civicrm/recurring/add" q="action=add&cid=$contactId&reset=1"}" class="button"><span><div class="icon add-icon"></div>{ts}Set up Recurring Payment{/ts}</span></a>
           </div>
+          {/if}
           
           {if $recurArray}
           
@@ -87,6 +91,9 @@
              <th>{ts}Frequency{/ts}</th>
              <th>{ts}Start Date{/ts}</th>
              <th>{ts}Next Scheduled Date{/ts}</th>
+             {if $membershipIdExists eq TRUE}
+                <th>{ts}Membership Type{/ts}</th>
+             {/if}
              <th>&nbsp;</th>
           </tr>
           
@@ -99,10 +106,16 @@
               <td>every {$row.frequency_interval} {$row.frequency_unit} </td>
               <td>{$row.start_date|crmDate}</td>
               <td>{$row.next_sched_contribution|crmDate}</td>
+              {if $membershipIdExists eq TRUE}
+                <td>{$row.membership_name}</td>
+              {/if}
               <!--<td>{$row.standard_price}</td>
               <td>{$row.vat_rate}</td>-->
               <td>
-                  <a href="{crmURL p="civicrm/recurring/add" q="action=update&id=$id&cid=$contactId&reset=1"}">Edit</a>
+                  <a href="{crmURL p="civicrm/contact/view/contributionrecur" q="id=$id&cid=$contactId&reset=1&context=contribution"}">View</a>
+                  {if call_user_func(array('CRM_Core_Permission','check'), 'edit offline recurring payments') && $row.enable_edit eq 1} 
+                    | <a href="{crmURL p="civicrm/recurring/add" q="action=update&id=$id&cid=$contactId&reset=1"}">Edit</a>
+                  {/if}
                   <!--| <a href="{crmURL p="civicrm/package/add" q="action=delete&id=$id&reset=1"}">Delete</a>-->
               </td>
             </tr>
@@ -113,7 +126,8 @@
                     <div class="icon inform-icon"></div>
                     {ts}No recurring payments have been setup for this contact.{/ts}
             </div>   
-          {/if}             
+          {/if}
+        
         <!-- Display recurring contribution section -->
         
 
