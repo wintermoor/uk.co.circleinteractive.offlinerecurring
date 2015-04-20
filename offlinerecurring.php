@@ -63,7 +63,7 @@ function offlinerecurring_civicrm_enable() {
             'version'       => 3,
             'name'          => ts('Process Offline Recurring Payments'),
             'description'   => ts('Processes any offline recurring payments that are due'),
-            'run_frequency' => 'Daily',
+            'run_frequency' => 'Hourly',
             'api_entity'    => 'job',
             'api_action'    => 'process_offline_recurring_payments',
             'is_active'     => 0
@@ -75,7 +75,7 @@ function offlinerecurring_civicrm_enable() {
                id, domain_id, run_frequency, last_run, name, description, 
                api_prefix, api_entity, api_action, parameters, is_active
             ) VALUES (
-               NULL, %1, 'Daily', NULL, 'Process Offline Recurring Payments', 
+               NULL, %1, 'Hourly', NULL, 'Process Offline Recurring Payments', 
                'Processes any offline recurring payments that are due',
                'civicrm_api3', 'job', 'process_offline_recurring_payments', '', 0
             )

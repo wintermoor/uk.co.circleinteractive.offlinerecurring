@@ -54,10 +54,14 @@ function offlinerecurring_civicrm_pageRun(&$page) {
 # exist when the extension was first written
 function civicrm_api3_job_process_offline_recurring_payments($params) {
                 
-    $dtCurrentDay      = date("Ymd", mktime(0, 0, 0, date("m") , date("d") , date("Y")));
-    $dtCurrentDayStart = $dtCurrentDay."000000"; 
-    $dtCurrentDayEnd   = $dtCurrentDay."235959"; 
+    //$dtCurrentDay      = date("Ymd", mktime(0, 0, 0, date("m") , date("d") , date("Y")));
+    //$dtCurrentDayStart = $dtCurrentDay."000000"; 
+    //$dtCurrentDayEnd   = $dtCurrentDay."235959"; 
     
+    // 7 day lookback - prevents contributions stopping if cron fails to run for up to 7 days
+    $searchStart = date('Y-m-d H:i:s', strtotime('today') - (7 * 86400));
+    $searchEnd   = date('Y-m-d H:i:s', strtotime('today') + 86399);
+
     // Select the recurring payment, where current date is equal to next scheduled date
     $sql = "
         SELECT * FROM civicrm_contribution_recur ccr
@@ -71,8 +75,8 @@ function civicrm_api3_job_process_offline_recurring_payments($params) {
         $sql = str_replace('next_sched_contribution', 'next_sched_contribution_date', $sql);
 
     $dao = CRM_Core_DAO::executeQuery($sql, array(
-          1 => array($dtCurrentDayStart, 'String'),
-          2 => array($dtCurrentDayEnd, 'String')
+          1 => array($searchStart, 'String'),
+          2 => array($searchEnd, 'String')
        )
     );
     
