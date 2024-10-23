@@ -113,12 +113,18 @@ function offlinerecurring_civicrm_xmlMenu(&$files) {
 }
 
 /**
- * Implementation of hook_civicrm_permission
+ * @param array $permissions
  */
 function offlinerecurring_civicrm_permission( &$permissions ) {
-  $prefix = ts('CiviCRM') . ': '; // name of extension or module
-  $permissions['add offline recurring payments'] = $prefix . ts('add offline recurring payments');
-  $permissions['edit offline recurring payments'] = $prefix . ts('edit offline recurring payments');
+  $prefix = 'CiviCRM Offlinerecurring: ';
+  $permissions['add offline recurring payments'] = [
+    'label' => $prefix . 'add offline recurring payments',
+    'description' => E::ts('Add offline recurring payments.'),
+  ];
+  $permissions['edit offline recurring payments'] = [
+    'label' => $prefix . 'edit offline recurring payments',
+    'description' => E::ts('Edit offline recurring payments.'),
+  ];
 }
 
 # conditionally include other hooks / functions, depending
